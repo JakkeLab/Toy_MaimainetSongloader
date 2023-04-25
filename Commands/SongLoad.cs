@@ -17,105 +17,108 @@ namespace MaimaiNetCrawler.Commands
         protected ChromeDriverService driverService = null;
         protected ChromeOptions options = null;
         protected ChromeDriver driver = null;
-        public List<Song> songLoader(string url)
-        {
-            //Define list
-            List<Song> songs = new List<Song>();
 
+        //Create ChromeDriver object
+        public ChromeDriver StartChromeDriver()
+        {
             //Start chromedrier
             driverService = ChromeDriverService.CreateDefaultService();
             driverService.HideCommandPromptWindow = true;
 
             options = new ChromeOptions();
-            options.AddArgument("disable-gpu");
+            options.AddArguments("headless");
+            options.AddArgument("ignore-certificate-errors");
+            options.PageLoadStrategy = PageLoadStrategy.Default;
 
-            var driver = new ChromeDriver(driverService, options);
+            return new ChromeDriver(driverService, options);
+        }
+
+        //Get song box IWebElement
+        public IList<IWebElement> GetSongBox(string url, ChromeDriver driver)
+        {
+            //Start chromedrier
 
             driver.Navigate().GoToUrl(url);
             var songlist = driver.FindElement(By.XPath("//*[@id=\'song--list\']"));
-            var songItems = songlist.FindElements(By.ClassName("song--item__box"));
 
-            //Create song object and add to list            
-            for(int i = 0; i < songItems.Count; i++)
+            return songlist.FindElements(By.ClassName("song--item__box")).ToImmutableList();
+        }
+        public Song GetSong(IWebElement songItem)
+        {
+            Song song = new Song();
+
+            //1. Check whether lock or not and genre.
+            if (IsSongLock(songItem))
             {
-                Song song = new Song();
-                var songItem = songItems[i];
-
-                //1. Check whether lock or not and genre.
-                if(IsSongLock(songItem))
-                {
-                    song.Lock = true;
-                    string[] topBarArr = GetTopBar(songItem).FindElement(By.TagName("p")).GetAttribute("class").Split(" ");
-                    song.Genre = GetGenre(topBarArr);
-                }
-                else
-                {
-                    song.Lock = false;
-                    string[] topBarArr = GetTopBar(songItem).FindElement(By.TagName("p")).GetAttribute("class").Split(" ");
-                    song.Genre = GetGenre(topBarArr);
-                }
-
-                //2. Get song name
-                song.Name = GetSongName(songItem);
-
-                //3. Get artist name
-                song.Artist = GetArtistName(songItem);
-
-                //4. Get tabtype and difficulty
-                IWebElement bottomBar = songItem.FindElements(By.ClassName("song--item__bottom")).FirstOrDefault();
-                int tabTypeNum = GetTabType(bottomBar);
-                IList<IWebElement> filteredBottombar = GetDistinctedElements(bottomBar);
-                IWebElement standardTabBar = filteredBottombar.FirstOrDefault(x => x.GetAttribute("class") == "song--item__lv st");
-                IWebElement deluxeTabBar = filteredBottombar.FirstOrDefault(x => x.GetAttribute("class") == "song--item__lv dx");
-                song.Tabtype = new Song().Tabtype;
-                if (tabTypeNum == 3)
-                {
-                    List<string> standardDifficulty = GetDifficultyList(standardTabBar);
-                    song.Tabtype.Standard = new Song.TabType.TabStandard();
-                    song.Tabtype.Standard.Difficulty.Basic = standardDifficulty[0];
-                    song.Tabtype.Standard.Difficulty.Normal = standardDifficulty[1];
-                    song.Tabtype.Standard.Difficulty.Expert = standardDifficulty[2];
-                    song.Tabtype.Standard.Difficulty.Master = standardDifficulty[3];
-                    song.Tabtype.Standard.Difficulty.ReMaster = standardDifficulty.Count > 4 ? standardDifficulty[4] : null;
-
-                    List<string> deluxeDifficulty = GetDifficultyList(deluxeTabBar);
-                    song.Tabtype.Deluxe = new Song.TabType.TabDeluxe();
-                    song.Tabtype.Deluxe.Difficulty.Basic = deluxeDifficulty[0];
-                    song.Tabtype.Deluxe.Difficulty.Normal = deluxeDifficulty[1];
-                    song.Tabtype.Deluxe.Difficulty.Expert = deluxeDifficulty[2];
-                    song.Tabtype.Deluxe.Difficulty.Master = deluxeDifficulty[3];
-                    song.Tabtype.Deluxe.Difficulty.ReMaster = deluxeDifficulty.Count > 4 ? deluxeDifficulty[4] : null;
-
-                }
-                else if(tabTypeNum == 2)
-                {
-                    List<string> standardDifficulty = GetDifficultyList(standardTabBar);
-                    song.Tabtype.Standard = new Song.TabType.TabStandard();
-                    song.Tabtype.Standard.Difficulty.Basic = standardDifficulty[0];
-                    song.Tabtype.Standard.Difficulty.Normal = standardDifficulty[1];
-                    song.Tabtype.Standard.Difficulty.Expert = standardDifficulty[2];
-                    song.Tabtype.Standard.Difficulty.Master = standardDifficulty[3];
-                    song.Tabtype.Standard.Difficulty.ReMaster = standardDifficulty.Count > 4 ? standardDifficulty[4] : null;
-
-                }
-                else if (tabTypeNum == 1)
-                {
-                    List<string> deluxeDifficulty = GetDifficultyList(deluxeTabBar);
-                    song.Tabtype.Deluxe = new Song.TabType.TabDeluxe();
-                    song.Tabtype.Deluxe.Difficulty.Basic = deluxeDifficulty[0];
-                    song.Tabtype.Deluxe.Difficulty.Normal = deluxeDifficulty[1];
-                    song.Tabtype.Deluxe.Difficulty.Expert = deluxeDifficulty[2];
-                    song.Tabtype.Deluxe.Difficulty.Master = deluxeDifficulty[3];
-                    song.Tabtype.Deluxe.Difficulty.ReMaster = deluxeDifficulty.Count > 4 ? deluxeDifficulty[4] : null;
-                }
-                //5. Add to list
-                songs.Add(song);
+                song.Lock = true;
+                string[] topBarArr = GetTopBar(songItem).FindElement(By.TagName("p")).GetAttribute("class").Split(" ");
+                song.Genre = GetGenre(topBarArr);
+            }
+            else
+            {
+                song.Lock = false;
+                string[] topBarArr = GetTopBar(songItem).FindElement(By.TagName("p")).GetAttribute("class").Split(" ");
+                song.Genre = GetGenre(topBarArr);
             }
 
-            //Return songs
-            return songs;
+            //2. Get song name
+            song.Name = GetSongName(songItem);
+
+            //3. Get artist name
+            song.Artist = GetArtistName(songItem);
+
+            //4. Get tabtype and difficulty
+            IWebElement bottomBar = songItem.FindElements(By.ClassName("song--item__bottom")).FirstOrDefault();
+            int tabTypeNum = GetTabType(bottomBar);
+            IList<IWebElement> filteredBottombar = GetDistinctedElements(bottomBar);
+            IWebElement standardTabBar = filteredBottombar.FirstOrDefault(x => x.GetAttribute("class") == "song--item__lv st");
+            IWebElement deluxeTabBar = filteredBottombar.FirstOrDefault(x => x.GetAttribute("class") == "song--item__lv dx");
+            song.Tabtype = new Song().Tabtype;
+            if (tabTypeNum == 3)
+            {
+                List<string> standardDifficulty = GetDifficultyList(standardTabBar);
+                song.Tabtype.Standard = new Song.TabType.TabStandard();
+                song.Tabtype.Standard.Difficulty.Basic = standardDifficulty[0];
+                song.Tabtype.Standard.Difficulty.Normal = standardDifficulty[1];
+                song.Tabtype.Standard.Difficulty.Expert = standardDifficulty[2];
+                song.Tabtype.Standard.Difficulty.Master = standardDifficulty[3];
+                song.Tabtype.Standard.Difficulty.ReMaster = standardDifficulty.Count > 4 ? standardDifficulty[4] : null;
+
+                List<string> deluxeDifficulty = GetDifficultyList(deluxeTabBar);
+                song.Tabtype.Deluxe = new Song.TabType.TabDeluxe();
+                song.Tabtype.Deluxe.Difficulty.Basic = deluxeDifficulty[0];
+                song.Tabtype.Deluxe.Difficulty.Normal = deluxeDifficulty[1];
+                song.Tabtype.Deluxe.Difficulty.Expert = deluxeDifficulty[2];
+                song.Tabtype.Deluxe.Difficulty.Master = deluxeDifficulty[3];
+                song.Tabtype.Deluxe.Difficulty.ReMaster = deluxeDifficulty.Count > 4 ? deluxeDifficulty[4] : null;
+
+            }
+            else if (tabTypeNum == 2)
+            {
+                List<string> standardDifficulty = GetDifficultyList(standardTabBar);
+                song.Tabtype.Standard = new Song.TabType.TabStandard();
+                song.Tabtype.Standard.Difficulty.Basic = standardDifficulty[0];
+                song.Tabtype.Standard.Difficulty.Normal = standardDifficulty[1];
+                song.Tabtype.Standard.Difficulty.Expert = standardDifficulty[2];
+                song.Tabtype.Standard.Difficulty.Master = standardDifficulty[3];
+                song.Tabtype.Standard.Difficulty.ReMaster = standardDifficulty.Count > 4 ? standardDifficulty[4] : null;
+
+            }
+            else if (tabTypeNum == 1)
+            {
+                List<string> deluxeDifficulty = GetDifficultyList(deluxeTabBar);
+                song.Tabtype.Deluxe = new Song.TabType.TabDeluxe();
+                song.Tabtype.Deluxe.Difficulty.Basic = deluxeDifficulty[0];
+                song.Tabtype.Deluxe.Difficulty.Normal = deluxeDifficulty[1];
+                song.Tabtype.Deluxe.Difficulty.Expert = deluxeDifficulty[2];
+                song.Tabtype.Deluxe.Difficulty.Master = deluxeDifficulty[3];
+                song.Tabtype.Deluxe.Difficulty.ReMaster = deluxeDifficulty.Count > 4 ? deluxeDifficulty[4] : null;
+            }
+
+            return song;
         }
 
+        #region Methods for crawling
         //Check whether the song is lock or not
         public bool IsSongLock(IWebElement webElement)
         { 
@@ -223,12 +226,13 @@ namespace MaimaiNetCrawler.Commands
             return filteredBottomBar.ToImmutableList();
         }
 
-
         public List<string> GetDifficultyList(IWebElement webElement)
         {
             IWebElement webElementList = webElement.FindElements(By.ClassName("song--item__lv__inner")).FirstOrDefault();
             List<string> difficultyList = webElementList.FindElements(By.TagName("p")).ToList().Select(x => x.Text).ToList();
             return difficultyList;
         }
+
+        #endregion
     }
 }
