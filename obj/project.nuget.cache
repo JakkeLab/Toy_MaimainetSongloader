@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "u9sBTuqB5FPK44o4zSg3ecClntf7F+EsAS5JNvtp3k0TLkHi64rebDFAdnVsQWbfYtACK/IJb0JrWxJZ0EmFuA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\sjak3\\OneDrive\\JAKK3 Lab\\03_DEV\\01_Project\\06_TOY\\04_MaimaiCrawler\\MaimaiNetCrawler\\MaimaiNetCrawler.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\sjak3\\.nuget\\packages\\newtonsoft.json\\13.0.1\\newtonsoft.json.13.0.1.nupkg.sha512",
+    "C:\\Users\\sjak3\\.nuget\\packages\\selenium.webdriver\\4.9.0\\selenium.webdriver.4.9.0.nupkg.sha512"
+  ],
+  "logs": []
+}
